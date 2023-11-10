@@ -38,21 +38,16 @@ class BLMFunctionCall:
     function_schema:Union[str,dict]
     function:Callable[..., Any]
 
-async def completion_flow(
-    prompt: Union[str, list],
-    context_id: Optional[str] = None,
-	model : str = None
-    ) -> Optional[str]:
-    ...
-
 async def chat_flow(
     prompt: Union[str, list],
+	model : str ,
     context_id: Optional[str] = None,
-    functions: Optional[list[BLMFunctionCall]] = None,
-	model : str = None
+    channel_id: Optional[str] = None,
+    functions: Optional[list[BLMFunctionCall]] = None
     ) -> Optional[str]:
     ...
 
+# 下版本支持
 async def assistant_flow(
 	assistant: str,
     prompt: Union[str, list],
@@ -60,13 +55,14 @@ async def assistant_flow(
     ) -> Optional[str]:
     ...
 
+# 下版本支持
 async def assistant_create(
     name:str,
     instructions:str,
+    model:str,
     functions: Optional[list[BLMFunctionCall]] = None,
     code_interpreter:bool = false,
     retrieval: Optional[List[str]] = None
-    model:str
     ) -> str:
     ...
 
@@ -78,6 +74,22 @@ async def extract_json(content:str):
 
 ```
 
+#### chat_flow
+
+Chat工作流，以一问一答的形式，与AI进行交互。
+
+参数列表：
+
+| 参数名     | 类型  | 释义   | 默认值 |
+|---------|-----|------|-----|
+| prompt | Union[str, list] | 要提交给模型的Prompt | 无(不可为空) |
+| model | str | 选择的模型 | 无(不可为空) |
+| context_id | Optional[str] | 如果你需要保持一个对话，请每次都传递相同的context_id，传递None则表示不保存本次Context。 | None |
+| channel_id | Optional[str] | 该次Prompt的ChannelId | None |
+| functions | Optional[list[BLMFunctionCall]] | FunctionCall功能，需要模型支持才能生效 | None |
+> 关于channel_id，其实本插件并不需要一个channel id，该参数的唯一目的是为了选择配置文件，注意这里说的是选择本插件的配置文件。目的服务“不同频道使用不同的ChatGPT、文心一言Key”的场景。我建议插件调用时，能传递channel_id的场景尽量传递，无法传递的时候也不强求。
+> FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)
+
 #### model_list
 
 获取可用的Model
@@ -88,10 +100,10 @@ async def extract_json(content:str):
 
 ```python
 [
-    {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_flow":["completion_flow","chat_flow","assistant_flow"]},
-    {"model_name":"gpt-4","type":"hight-cost","supported_flow":["completion_flow","chat_flow","assistant_flow"]},
-    {"model_name":"ernie-3.5","type":"low-cost","supported_flow":["completion_flow","chat_flow"]},
-    {"model_name":"ernie-4","type":"hight-cost","supported_flow":["completion_flow","chat_flow"]},
+    {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
+    {"model_name":"gpt-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]]},
+    {"model_name":"ernie-3.5","type":"low-cost","supported_feature":["completion_flow","chat_flow"]},
+    {"model_name":"ernie-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow"]},
 ]
 ```
 
@@ -100,6 +112,21 @@ async def extract_json(content:str):
 该函数设计的作用是配合动态配置文件Schema功能，让其他插件可以在自己的插件配置项中展示并让用户选择Model。
 
 该函数可在函数定义阶段就可用，但是考虑到加载顺序问题，建议不要早于load函数中调用。
+
+#### extract_json
+
+将字符串转为json的帮助函数。使用正则表达式，从一个字符串中提取出一个json数组或者json对象。
+和AI其实没什关系，但是是一个很好用的帮助函数。用于处理诸如：
+
+```
+好的，输出的json是：
+{
+    ...
+}
+
+```
+
+这样的返回。
 
 ### 消耗计算
 

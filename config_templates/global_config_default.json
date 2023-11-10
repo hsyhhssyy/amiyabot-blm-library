@@ -12,7 +12,6 @@
     "app_id": "12345",
     "api_key": "12345",
     "secret_key": "12345",
-    "base_url": "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop",
     "disable_high_cost_quota":true,
     "high_cost_quota": 5
   },

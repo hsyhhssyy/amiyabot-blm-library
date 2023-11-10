@@ -20,6 +20,6 @@ bot = BLMLibraryPluginInstance(
 
 @bot.on_message(keywords=['测试调用库'], level=5)
 async def test_call_lib(data: Message):
-    ret = await bot.chat_flow('测试调用库', 'gpt-4')
+    ret = await bot.chat_flow('测试调用库', 'ERNIE-Bot')
     log.info(ret)
     return Chain(data).text(ret)

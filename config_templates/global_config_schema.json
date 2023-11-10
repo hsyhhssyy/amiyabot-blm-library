@@ -69,12 +69,6 @@
           "description": "由OpenAI提供给您的Secret Key，没有的话请到https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application申请。",
           "type": "string"
         },
-        "base_url": {
-          "title": "Url",
-          "description": "可以填写一个Url作为API的基础路径。该url应该以http开头，结尾不包含斜杠，使用时将会拼接为{base_url}/chat等",
-          "type": "string",
-          "format": "uri"
-        },
         "disable_high_cost_quota": {
           "title": "禁用ERNIE-4",
           "description": "设置后，将不会在列表中给其他插件返回ERNIE-4模型。",
@@ -90,7 +84,6 @@
         "app_id",
         "api_key",
         "secret_key",
-        "base_url",
         "disable_high_cost_quota",
         "high_cost_quota"
       ]

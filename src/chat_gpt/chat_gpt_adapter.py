@@ -36,8 +36,8 @@ class ChatGPTAdapter(BLMAdapter):
 
     async def model_list(self) -> List[dict]:  
         return [
-            {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_flow":["completion_flow","chat_flow","assistant_flow"]},
-            {"model_name":"gpt-4","type":"hight-cost","supported_flow":["completion_flow","chat_flow","assistant_flow"]},
+            {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
+            {"model_name":"gpt-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
         ]
     
     async def chat_flow(  
@@ -71,13 +71,13 @@ class ChatGPTAdapter(BLMAdapter):
         if isinstance(prompt, str):
             prompt = [prompt]
         
+        prompt = [{"role": "user", "content": command} for command in prompt]
+        
         if context_id is not None:
             if context_id not in self.context_holder:
                 self.context_holder[context_id] = []
             prompt = self.context_holder[context_id] + prompt
 
-        prompt = [{"role": "user", "content": command} for command in prompt]
-        
         combined_message = ''.join(obj['content'] for obj in prompt)
 
         try:
@@ -104,9 +104,9 @@ class ChatGPTAdapter(BLMAdapter):
         
         self.debug_log(f'Chatgpt Raw: \n{combined_message}\n------------------------\n{text}')
 
-         # 出于调试目的，写入请求数据
+        # 出于调试目的，写入请求数据
         formatted_file_timestamp = time.strftime('%Y%m%d', time.localtime(time.time()))
-        sent_file = f'{self.cache_dir}/{channel_id}.{formatted_file_timestamp}.txt'
+        sent_file = f'{self.cache_dir}/CHATGPT.{channel_id}.{formatted_file_timestamp}.txt'
         with open(sent_file, 'a', encoding='utf-8') as file:
             file.write('-'*20)
             formatted_timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
@@ -131,7 +131,6 @@ class ChatGPTAdapter(BLMAdapter):
             model = "-"
 
         AmiyaBotBLMLibraryTokenConsumeModel.create(
-            plugin_id="-",json_config="-",version="-",
             channel_id=channel_id, model_name=model, exec_id=id,
             prompt_tokens=int(usage['prompt_tokens']),
             completion_tokens=int(usage['completion_tokens']),
