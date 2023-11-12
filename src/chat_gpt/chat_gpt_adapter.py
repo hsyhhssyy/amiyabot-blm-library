@@ -36,6 +36,10 @@ class ChatGPTAdapter(BLMAdapter):
 
     def __quota_check(self,peek:bool = False) -> int:
         query_per_hour = self.get_config('high_cost_quota')
+
+        if query_per_hour is None or query_per_hour <= 0:
+            return 100000
+
         current_time = time.time()
         hour_ago = current_time - 3600  # 3600秒代表一小时
 
