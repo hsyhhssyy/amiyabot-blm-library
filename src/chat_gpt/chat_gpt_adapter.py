@@ -21,24 +21,61 @@ class ChatGPTAdapter(BLMAdapter):
         super().__init__()
         self.plugin:AmiyaBotPluginInstance = plugin
         self.context_holder = {}
+        self.query_times = []
 
     def debug_log(self, msg):
         show_log = self.plugin.get_config("show_log")
         if show_log == True:
             logger.info(f'{msg}')
 
-    def get_config(self, key, channel_id):
-        chatgpt_config = self.plugin.get_config("ChatGPT", channel_id)
+    def get_config(self, key):
+        chatgpt_config = self.plugin.get_config("ChatGPT")
         if chatgpt_config and chatgpt_config["enable"] and key in chatgpt_config:
             return chatgpt_config[key]
         return None
-        
 
-    async def model_list(self) -> List[dict]:  
-        return [
-            {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
-            {"model_name":"gpt-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
+    def __quota_check(self,peek:bool = False) -> int:
+        query_per_hour = self.get_config('high_cost_quota')
+        current_time = time.time()
+        hour_ago = current_time - 3600  # 3600秒代表一小时
+
+        # 移除一小时前的查询记录
+        self.query_times = [t for t in self.query_times if t > hour_ago]
+
+        current_query_times = len(self.query_times)
+
+        if current_query_times < query_per_hour:
+            # 如果过去一小时内的查询次数小于限制，则允许查询
+            if not peek:
+                self.query_times.append(current_time)
+            self.debug_log(f"quota check success, query times: {current_query_times} > {query_per_hour}")
+            return query_per_hour - current_query_times
+        else:
+            # 否则拒绝查询
+            self.debug_log(f"quota check failed, query times: {current_query_times} >= {query_per_hour}")
+            return 0
+
+    def get_model_quota_left(self,model_name:str) -> int:
+        model_info = self.get_model(model_name)
+        if model_info is None:
+            return 0
+        if model_info["type"] == "low-cost":
+            return 100000000
+        if model_info["type"] == "high-cost":
+            # 根据__quota_check来计算
+            return self.__quota_check(peek=True)
+        return 0
+
+    def model_list(self) -> List[dict]:
+        model_list_response = [
+            {"model_name": "gpt-3.5-turbo", "type": "low-cost", "max-token":2000, "supported_feature": [
+                "completion_flow", "chat_flow", "assistant_flow", "function_call"]},
         ]
+        disable_gpt_4 = self.get_config("disable_high_cost")
+        if disable_gpt_4 == False:
+            model_list_response.append({"model_name": "gpt-4", "type": "high-cost", "max-token":4000, "supported_feature": [
+                "completion_flow", "chat_flow", "assistant_flow", "function_call"]})
+        return model_list_response
     
     async def chat_flow(  
         self,  
@@ -49,23 +86,39 @@ class ChatGPTAdapter(BLMAdapter):
         functions: Optional[List[BLMFunctionCall]] = None,  
     ) -> Optional[str]:  
         
-        openai.api_key = self.get_config('api_key', channel_id)
+        self.debug_log(f'chat_flow received: {prompt} {model} {context_id} {channel_id} {functions}')
 
-        proxy = self.get_config('proxy', channel_id)
+        model_info = self.get_model(model)
+        if model_info is None:
+            self.debug_log('model not found')
+            return None
+        
+        self.debug_log(f'model info: {model_info}')
+
+        if not model_info["supported_feature"].__contains__("chat_flow"):
+            self.debug_log('model not supported chat_flow')
+            return None
+        if model_info["type"] == "high-cost":
+            quota = self.__quota_check()
+            if quota <= 0:
+                self.debug_log(f"quota check failed, fallback to gpt-3.5-turbo {quota}")
+                model_info = self.get_model("gpt-3.5-turbo")
+
+
+        openai.api_key = self.get_config('api_key')
+
+        proxy = self.get_config('proxy')
         if proxy:
             self.debug_log(f"proxy set: {proxy}")
             openai.proxy = proxy
 
-        if model is None:
-            model = "gpt-3.5-turbo"
-
-        base_url = self.get_config('url', channel_id)
+        base_url = self.get_config('url')
         if base_url:
             openai.api_base = base_url
 
         response = None
 
-        self.debug_log(f"url: {base_url} proxy: {proxy} model: {model}")
+        self.debug_log(f"url: {base_url} proxy: {proxy} model: {model_info}")
         
 
         if isinstance(prompt, str):
@@ -83,7 +136,7 @@ class ChatGPTAdapter(BLMAdapter):
         try:
             response = await run_in_thread_pool(
                 openai.ChatCompletion.create,
-                **{'model': model, 'messages': prompt}
+                **{'model': model_info["model_name"], 'messages': prompt}
             )
             
         except openai.error.RateLimitError as e:
@@ -102,7 +155,7 @@ class ChatGPTAdapter(BLMAdapter):
         text: str = response['choices'][0]['message']['content']
         # role: str = response['choices'][0]['message']['role']
         
-        self.debug_log(f'Chatgpt Raw: \n{combined_message}\n------------------------\n{text}')
+        self.debug_log(f'{model_info["model_name"]} Raw: \n{combined_message}\n------------------------\n{text}')
 
         # 出于调试目的，写入请求数据
         formatted_file_timestamp = time.strftime('%Y%m%d', time.localtime(time.time()))
@@ -110,7 +163,7 @@ class ChatGPTAdapter(BLMAdapter):
         with open(sent_file, 'a', encoding='utf-8') as file:
             file.write('-'*20)
             formatted_timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-            file.write(f'{formatted_timestamp}')
+            file.write(f'{formatted_timestamp} {model_info["model_name"]}')
             file.write('-'*20)
             file.write('\n')
             all_contents = "\n".join([item["content"] for item in prompt])
@@ -127,11 +180,8 @@ class ChatGPTAdapter(BLMAdapter):
         if channel_id is None:
             channel_id = "-"
 
-        if model is None:
-            model = "-"
-
         AmiyaBotBLMLibraryTokenConsumeModel.create(
-            channel_id=channel_id, model_name=model, exec_id=id,
+            channel_id=channel_id, model_name=model_info["model_name"], exec_id=id,
             prompt_tokens=int(usage['prompt_tokens']),
             completion_tokens=int(usage['completion_tokens']),
             total_tokens=int(usage['total_tokens']), exec_time=datetime.now())

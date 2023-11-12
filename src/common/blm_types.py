@@ -20,7 +20,7 @@ class BLMAdapter:
     async def completion_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+        model: Optional[Union[str, dict]],
         context_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> Optional[str]:  
@@ -29,7 +29,7 @@ class BLMAdapter:
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+        model: Optional[Union[str, dict]],
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
@@ -49,15 +49,27 @@ class BLMAdapter:
         self,  
         name: str,  
         instructions: str,  
-        model: str ,
+        model: Optional[Union[str, dict]],
         functions: Optional[List[BLMFunctionCall]] = None,  
         code_interpreter: bool = False,  
         retrieval: Optional[List[str]] = None,  
     ) -> str:  
         ...  
   
-    async def model_list(self) -> List[dict]:  
+    def model_list(self) -> List[dict]:  
         ...  
-  
+        
+    def get_model(self,model_name:str) -> dict:  
+        model_dict_list = self.model_list()
+        for model_dict in model_dict_list:
+            if model_dict["model_name"] == model_name:
+                return model_dict
+
+    def get_model_quota_left(self,model_name:str) -> int:
+        ...
+    
+    def get_default_model(self) -> dict:
+        ...
+
     def extract_json(self, string: str) -> List[Union[Dict[str, Any], List[Any]]]:
         ...

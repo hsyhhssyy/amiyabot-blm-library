@@ -40,7 +40,7 @@ class BLMFunctionCall:
 
 async def chat_flow(
     prompt: Union[str, list],
-	model : str ,
+	model : Optional[Union[str, dict]],
     context_id: Optional[str] = None,
     channel_id: Optional[str] = None,
     functions: Optional[list[BLMFunctionCall]] = None
@@ -59,14 +59,23 @@ async def assistant_flow(
 async def assistant_create(
     name:str,
     instructions:str,
-    model:str,
+    model: Optional[Union[str, dict]],
     functions: Optional[list[BLMFunctionCall]] = None,
     code_interpreter:bool = false,
     retrieval: Optional[List[str]] = None
     ) -> str:
     ...
 
-async def model_list() -> List[dict]:
+def model_list() -> List[dict]:
+    ...
+
+def get_model(self,model_name:str) -> dict:
+    ...
+
+def get_model_quota_left(self,model_name:str) -> int:
+    ...
+
+def get_default_model(self) -> dict:
     ...
 
 async def extract_json(content:str):
@@ -83,16 +92,19 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 | 参数名     | 类型  | 释义   | 默认值 |
 |---------|-----|------|-----|
 | prompt | Union[str, list] | 要提交给模型的Prompt | 无(不可为空) |
-| model | str | 选择的模型 | 无(不可为空) |
+| model |  Union[str,dict] | 选择的模型，既可以是模型的名字，也可以是model_list或get_model返回的dict | None |
 | context_id | Optional[str] | 如果你需要保持一个对话，请每次都传递相同的context_id，传递None则表示不保存本次Context。 | None |
 | channel_id | Optional[str] | 该次Prompt的ChannelId | None |
 | functions | Optional[list[BLMFunctionCall]] | FunctionCall功能，需要模型支持才能生效 | None |
-> 关于channel_id，其实本插件并不需要一个channel id，该参数的唯一目的是为了选择配置文件，注意这里说的是选择本插件的配置文件。目的服务“不同频道使用不同的ChatGPT、文心一言Key”的场景。我建议插件调用时，能传递channel_id的场景尽量传递，无法传递的时候也不强求。
-> FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)
+
+> model可以是字符串，也可以是model_list或get_model返回的dict。在dict的情况下，会访问dict的“model_name”属性来获取模型名称。
+> 如果model不存在，会直接返回None。如果传入的model为空，会访问配置项中的‘默认模型’并选择那个模型。
+> 关于channel_id，其实本插件并不需要一个channel id，该参数的唯一目的是为了保存token调用量。我建议插件调用时，能传递channel_id的场景尽量传递，无法获取ChannelId的时候也最好传递自己插件的名字等，用于在计费的时候区分。
+> functions函数是用于FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)。（下个版本会尝试在文心一言中模拟该功能。）
 
 #### model_list
 
-获取可用的Model
+获取可用的Model的列表。
 
 无参数
 
@@ -100,18 +112,36 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 
 ```python
 [
-    {"model_name":"gpt-3.5-turbo","type":"low-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
-    {"model_name":"gpt-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]]},
-    {"model_name":"ernie-3.5","type":"low-cost","supported_feature":["completion_flow","chat_flow"]},
-    {"model_name":"ernie-4","type":"hight-cost","supported_feature":["completion_flow","chat_flow"]},
+    {"model_name":"gpt-3.5-turbo","type":"low-cost","max-token":2000,"supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]},
+    {"model_name":"gpt-4","type":"high-cost","max-token":4000,"supported_feature":["completion_flow","chat_flow","assistant_flow","function_call"]]},
+    {"model_name":"ernie-3.5","type":"low-cost","max-token":4000,"supported_feature":["completion_flow","chat_flow"]},
+    {"model_name":"ernie-4","type":"high-cost","max-token":4000,"supported_feature":["completion_flow","chat_flow"]},
 ]
 ```
 
-具体返回值会根据用户的配置来确定。
-
-该函数设计的作用是配合动态配置文件Schema功能，让其他插件可以在自己的插件配置项中展示并让用户选择Model。
-
+具体返回值会根据用户的配置来确定。如果用户没有配置启动文心一言或者
+该函数可以用来配合动态配置文件Schema功能，让其他插件可以在自己的插件配置项中展示并让用户选择Model。
 该函数可在函数定义阶段就可用，但是考虑到加载顺序问题，建议不要早于load函数中调用。
+
+返回字典格式说明：
+
+| 参数名     | 类型  | 释义   | 
+|---------|-----|------|
+| model_name | int | 模型名 | 
+
+*请不要在代码中hardcode模型的名称，在当前版本中，系统会返回诸如ernie-4这样的模型名，但是在未来版本，本插件会支持用户配置两个ChatGPT，三个文心一言这样的设置。届时在返回模型时，就会出现“ERNIE-4(UserDefinedName)”这样的结果。你的HardCode就会失效。*
+
+#### get_model
+
+根据字符串形式的模型名称，返回对应模型的info dict。
+
+#### get_model_quota_left
+
+因为模型的调用配额是可以分开配置的，因此这里可以根据模型名称，查询该模型的配额，开发者可以据此推断模型的行为。
+
+#### get_default_model
+
+前面说过，如果不提供模型，那么会调用用户配置的默认模型，该函数就会返回这个默认模型的info dict，让开发者知道用户配置的默认模型是什么。
 
 #### extract_json
 

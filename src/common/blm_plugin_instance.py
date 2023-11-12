@@ -42,32 +42,52 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
         if ernie_config and ernie_config["enable"]:
             self.adapters.append(ERNIEAdapter(self))
         
-        # Schedule the coroutine to run in the existing event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(self.model_list())
-        else:
-            loop.run_until_complete(self.model_list())
+        self.model_list()
 
-    async def model_list(self) -> List[dict]:  
+    def model_list(self) -> List[dict]:  
         # 返回的同时，构造ModelMap，方便后续的模型调用
         model_list = []
         for adapter in self.adapters:
-            adapter_models = await adapter.model_list()
+            adapter_models = adapter.model_list()
             model_list.extend(adapter_models)
             for model in adapter_models:
                 self.model_map[model["model_name"]] = adapter
         return model_list
     
+    def get_model(self,model_name:str)->dict:
+        model_dict_list = self.model_list()
+        for model_dict in model_dict_list:
+            if model_dict["model_name"] == model_name:
+                return model_dict
+
+    def get_model_quota_left(self,model_name:str) -> int:
+        adapter = self.model_map[model_name]
+        if not adapter:
+            return 0
+        return adapter.get_model_quota_left(model_name)
+
+    def get_default_model(self) -> dict:
+        default_model = self.get_config("default_model")
+        if default_model:
+            return self.get_model(default_model)
+        else:
+            return None
+
     # 以下是对外提供的接口, 通过model_name来确定调用哪个模型
 
     async def completion_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+        model: Optional[Union[str, dict]],
         context_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> Optional[str]:  
+        if model is None:
+            model = self.get_default_model()
+            
+        if isinstance(model,dict):
+            model = model["model_name"]
+
         adapter = self.model_map[model]
         if not adapter:
             return None
@@ -76,11 +96,17 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+        model: Optional[Union[str, dict]],
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
-    ) -> Optional[str]:  
+    ) -> Optional[str]:
+        if model is None:
+            model = self.get_default_model()
+
+        if isinstance(model,dict):
+            model = model["model_name"]
+            
         adapter = self.model_map[model]
         if not adapter:
             return None
@@ -93,6 +119,12 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
         context_id: Optional[str] = None,        
         channel_id: Optional[str] = None,
     ) -> Optional[str]:
+        if model is None:
+            model = self.get_default_model()
+
+        if isinstance(model,dict):
+            model = model["model_name"]
+
         adapter = self.model_map[assistant]
         if not adapter:
             return None
@@ -102,11 +134,17 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
         self,  
         name: str,  
         instructions: str,  
-        model: str ,
+        model: Optional[Union[str, dict]],
         functions: Optional[List[BLMFunctionCall]] = None,  
         code_interpreter: bool = False,  
         retrieval: Optional[List[str]] = None,  
     ) -> str:
+        
+        if model is None:
+            model = self.get_default_model()
+        if isinstance(model,dict):
+            model = model["model_name"]
+            
         adapter = self.model_map[model]
         if not adapter:
             return None

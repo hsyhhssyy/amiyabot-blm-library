@@ -21,6 +21,7 @@ class ERNIEAdapter(BLMAdapter):
         super().__init__()
         self.plugin:AmiyaBotPluginInstance = plugin
         self.context_holder = {}
+        self.query_times = []
     
     def debug_log(self, msg):
         show_log = self.plugin.get_config("show_log")
@@ -33,12 +34,48 @@ class ERNIEAdapter(BLMAdapter):
             return chatgpt_config[key]
         return None
 
-    async def model_list(self) -> List[dict]:  
-        return [
-            {"model_name":"ERNIE-Bot","type":"low-cost","supported_feature":["completion_flow","chat_flow"]},
-            {"model_name":"ERNIE-Bot-turbo","type":"low-cost","supported_feature":["completion_flow","chat_flow"]},
-            {"model_name":"ERNIE-Bot 4.0","type":"hight-cost","supported_feature":["completion_flow","chat_flow"]},
+    def __quota_check(self,peek:bool = False) -> int:
+        query_per_hour = self.get_config('high_cost_quota')
+        current_time = time.time()
+        hour_ago = current_time - 3600  # 3600秒代表一小时
+
+        # 移除一小时前的查询记录
+        self.query_times = [t for t in self.query_times if t > hour_ago]
+
+        current_query_times = len(self.query_times)
+
+        if current_query_times < query_per_hour:
+            # 如果过去一小时内的查询次数小于限制，则允许查询
+            if not peek:
+                self.query_times.append(current_time)
+            self.debug_log(f"quota check success, query times: {current_query_times} > {query_per_hour}")
+            return query_per_hour - current_query_times
+        else:
+            # 否则拒绝查询
+            self.debug_log(f"quota check failed, query times: {current_query_times} >= {query_per_hour}")
+            return 0
+
+    def get_model_quota_left(self,model_name:str) -> int:
+        model_info = self.get_model(model_name)
+        if model_info is None:
+            return 0
+        if model_info["type"] == "low-cost":
+            return 100000000
+        if model_info["type"] == "high-cost":
+            # 根据__quota_check来计算
+            return self.__quota_check(peek=True)
+        return 0
+
+    def model_list(self) -> List[dict]:
+        model_list_response = [
+            {"model_name":"ERNIE-Bot","type":"low-cost", "max-token":4000,"supported_feature":["completion_flow","chat_flow"]},
+            {"model_name":"ERNIE-Bot-turbo","type":"low-cost", "max-token":4000,"supported_feature":["completion_flow","chat_flow"]},
         ]
+
+        disable_high_cost = self.get_config("disable_high_cost")
+        if disable_high_cost == False:
+            model_list_response.append({"model_name":"ERNIE-Bot 4.0","type":"hight-cost", "max-token":4000,"supported_feature":["completion_flow","chat_flow"]})
+        return model_list_response
 
     async def __get_access_token(self, channel_id):
         appid = self.get_config("app_id", channel_id)
@@ -71,7 +108,7 @@ class ERNIEAdapter(BLMAdapter):
         url = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}"
 
         # post request
-        access_token_response_str = await http_requests.post(url, ignore_error=True)
+        access_token_response_str = await http_requests.post(url)
 
         try:
             access_token_response_json = json.loads(access_token_response_str)
@@ -191,7 +228,7 @@ class ERNIEAdapter(BLMAdapter):
             ]
         }
 
-        response_str = await http_requests.post(url, headers=headers, payload=data, ignore_error=True)
+        response_str = await http_requests.post(url, headers=headers, payload=data)
 
         try:
             response_json = json.loads(response_str)
@@ -209,7 +246,7 @@ class ERNIEAdapter(BLMAdapter):
             _ = usage["completion_tokens"]
             _ = usage["total_tokens"]
         except Exception as e:
-            self.debug_log(f"fail to chat, error: {e} \n {response_str}")
+            self.debug_log(f"fail to chat, error: {e} \n response: {response_str}")
             return None
         
         combined_message = '\n'.join(obj['content'] for obj in prompt)
