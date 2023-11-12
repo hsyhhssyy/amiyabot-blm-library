@@ -2,19 +2,31 @@
 
 为其他插件提供大语音模型（ChatGPT，文心一言等）调用库
 
-## 使用方法
+# 使用方法
 
-### 我是兔兔用户
+## 我是兔兔用户
 
 当你安装了需要该Lib的插件的时候，该插件会因为依赖关系，自动被下载，因此一般情况下你应该不需要手动安装这个插件。
 
 使用时，请在该插件的全局配置项中，填入你的大语言模型相关的密钥和连接。
 
+* `默认模型` : 有时候，其他插件没有提供模型的选项，此时调用本插件时，默认为其提供的模型。如果你配置了文心一言或者ChatGPT等配置后发现这里没有选项，请保存配置然后刷新Console再试。
+
 > 我是ChatGPT用户
+
+* `api_key` :由OpenAI提供给您，必须要给出API_KEY才能使用该插件。
+* `url` :如果你使用反向代理，那么这里可以通过给出base_url来指定openai调用时的基础Url，该url应该以http开头，结尾不包含斜杠，使用时将会拼接为{base_url}/completion等形式，该参数默认值为https://api.openai.com/v1。
+* `proxy` :如果你没有全局代理，那么你可以指定proxy参数来给他配置一个http或https代理，socks代理不支持。
+* `禁用GPT-4` 开启该开关后，不再向其他插件提供ERNIE-4模型，如果其他插件尝试调用该模型，则会报错。
+* `GPT-4限额` 使用GPT-4模型时的平均每小时调用次数，设为0表示不限。
 
 > 我是文心一言用户
 
-### 我是兔兔开发者
+* `app_id` `api_key` `secret_key` :由百度智能云提供给您，必须要给才能使用该插件。
+* `禁用ERNIE-4` 开启该开关后，不再向其他插件提供ERNIE-4模型，如果其他插件尝试调用该模型，则会报错。
+* `ERNIE-4限额` 使用ERNIE-4模型时的平均每小时调用次数，设为0表示不限。
+
+## 我是兔兔开发者
 
 下面这些函数可以让你调用大语言模型，同时还不必关心模型种类和配置细节。
 
@@ -40,7 +52,7 @@ class BLMFunctionCall:
 
 async def chat_flow(
     prompt: Union[str, list],
-	model : Optional[Union[str, dict]],
+	model : Optional[Union[str, dict]] = None,
     context_id: Optional[str] = None,
     channel_id: Optional[str] = None,
     functions: Optional[list[BLMFunctionCall]] = None
@@ -59,7 +71,7 @@ async def assistant_flow(
 async def assistant_create(
     name:str,
     instructions:str,
-    model: Optional[Union[str, dict]],
+    model: Optional[Union[str, dict]] = None,
     functions: Optional[list[BLMFunctionCall]] = None,
     code_interpreter:bool = false,
     retrieval: Optional[List[str]] = None
@@ -83,7 +95,7 @@ async def extract_json(content:str):
 
 ```
 
-#### chat_flow
+### chat_flow
 
 Chat工作流，以一问一答的形式，与AI进行交互。
 
@@ -103,13 +115,27 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 
 > 关于channel_id，其实本插件并不需要一个channel id，该参数的唯一目的是为了保存token调用量。我建议插件调用时，能传递channel_id的场景尽量传递，无法获取ChannelId的时候也最好传递自己插件的名字等，用于在计费的时候区分。
 
-> functions函数是用于FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)。（下个版本会尝试在文心一言中模拟该功能。）
+> functions函数是用于FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)。（该功能本版本未实现对接，下个版本会实现对接。）
 
-#### model_list
+返回值说明:
+
+| 类型         | 释义                  |
+|------------|---------------------|
+| Optional[str] | 返回模型生成的文本结果。如果模型不存在或prompt为空，则返回None。|
+
+### model_list
 
 获取可用的Model的列表。
 
+参数说明:
+
 无参数
+
+返回值说明:
+
+| 类型          | 释义                      |
+|-------------|-------------------------|
+| List[dict]  | 返回可用模型的列表，每个模型以字典形式表示。 |
 
 返回值为一个字典数组，范例如下：
 
@@ -128,25 +154,62 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 
 返回字典格式说明：
 
-| 参数名     | 类型  | 释义   | 
-|---------|-----|------|
-| model_name | int | 模型名 | 
+| 参数名             | 类型     | 释义                                |
+|-----------------|--------|-----------------------------------|
+| model_name      | str    | 模型的名称                            |
+| type            | str    | 模型的类型，如"low-cost"或"high-cost"     |
+| max-token       | int    | 模型单次请求支持的最大token数，注意诸如function call等功能也会消耗token    |
+| supported_feature | list   | 模型支持的特性列表 |
 
 **请不要在代码中hardcode模型的名称，在当前版本中，系统会返回诸如ernie-4这样的模型名，但是在未来版本，本插件会支持用户配置两个ChatGPT，三个文心一言这样的设置。届时在返回模型时，就会出现“ERNIE-4(UserDefinedName)”这样的结果。你的HardCode就会失效。**
 
-#### get_model
+### get_model
 
 根据字符串形式的模型名称，返回对应模型的info dict。
 
-#### get_model_quota_left
+参数说明：
+
+| 参数名       | 类型   | 释义                 | 默认值 |
+|-----------|------|--------------------|-----|
+| model_name| str  | 模型的字符串名称         | 无   |
+
+返回值说明：
+
+| 类型    | 释义                    |
+|-------|-----------------------|
+| dict  | 返回对应模型名称的info字典。 |
+
+### get_model_quota_left
 
 因为模型的调用配额是可以分开配置的，因此这里可以根据模型名称，查询该模型的配额，开发者可以据此推断模型的行为。
 
-#### get_default_model
+参数说明：
+
+| 参数名       | 类型   | 释义             | 默认值 |
+|-----------|------|----------------|-----|
+| model_name| str  | 模型的字符串名称     | 无   |
+
+返回值说明：
+
+| 类型  | 释义                            |
+|-----|-------------------------------|
+| int | 返回模型的剩余配额数量。 对于无限配额的模型，会返回100000    |
+
+### get_default_model
 
 前面说过，如果不提供模型，那么会调用用户配置的默认模型，该函数就会返回这个默认模型的info dict，让开发者知道用户配置的默认模型是什么。
 
-#### extract_json
+参数说明：
+
+无参数
+
+返回值说明：
+
+| 类型    | 释义                      |
+|-------|-------------------------|
+| dict  | 返回用户配置的默认模型的info字典。 |
+
+### extract_json
 
 将字符串转为json的帮助函数。使用正则表达式，从一个字符串中提取出一个json数组或者json对象。
 和AI其实没什关系，但是是一个很好用的帮助函数。用于处理诸如：
@@ -161,7 +224,21 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 
 这样的返回。
 
-### 消耗计算
+参数说明：
+
+| 参数名     | 类型   | 释义                 | 默认值 |
+|---------|------|--------------------|-----|
+| content | str
+
+  | 需要转换为json的字符串内容 | 无   |
+
+返回值说明：
+
+| 类型                    | 释义                              |
+|-----------------------|---------------------------------|
+| Union[dict, list, None] | 从字符串中提取的json对象、数组或在无法提取时为None。 |
+
+# 消耗计算
 
 对于有需要的用户，该Lib会统计每次发送请求时，消耗掉的API Token数量，并且可以分频道计算。
 您可以打开amiya_plugin数据库并访问amiyabot-blm-library-token-consume表来查询和统计。
@@ -196,13 +273,13 @@ SELECT
 	`consume`.`channel_id`
 ```
 
-## 备注
+# 备注
 
 [项目地址:Github](https://github.com/hsyhhssyy/amiyabot-blm-libraryg/)
 
 [遇到问题可以在这里反馈(Github)](https://github.com/hsyhhssyy/amiyabot-blm-library/issues/new/)
 
-## 版本信息
+# 版本信息
 
 |  版本   | 变更  |
 |  ----  | ----  |

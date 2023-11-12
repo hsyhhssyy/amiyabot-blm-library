@@ -14,7 +14,6 @@ def dynamic_get_global_config_schema_data():
     
     filepath =  f'{curr_dir}/config_templates/global_config_schema.json'
     if bot:
-        log.info(f"Get model 1.")
         try:
             with open(filepath, 'r') as file:
                 data = json.load(file)
@@ -22,13 +21,11 @@ def dynamic_get_global_config_schema_data():
             log.info(f"Failed to load JSON from {filepath}.")
             return None
 
-        log.info(f"Get model 2.")
         model_list = bot.model_list()
 
         newValues = ["..."]
         newValues.extend([model["model_name"] for model in model_list])
 
-        log.info(f"Get model 3.{newValues}")
         try:                        
             data["properties"]["default_model"]["enum"] = newValues
         except KeyError as e:

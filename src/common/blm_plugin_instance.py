@@ -187,7 +187,7 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
                 json_objects.append(json_object)
             except json.JSONDecodeError as e:
                 pass
-
+                
         # 如果是一个数组的数组,就拆出来
         if len(json_objects) == 1:
             if isinstance(json_objects[0],list):

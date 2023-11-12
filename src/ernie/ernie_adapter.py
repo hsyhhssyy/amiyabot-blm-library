@@ -29,9 +29,9 @@ class ERNIEAdapter(BLMAdapter):
             logger.info(f'{msg}')
 
     def get_config(self, key):
-        chatgpt_config = self.plugin.get_config("ERNIE")
-        if chatgpt_config and chatgpt_config["enable"] and key in chatgpt_config:
-            return chatgpt_config[key]
+        model_config = self.plugin.get_config("ERNIE")
+        if model_config and model_config["enable"] and key in model_config:
+            return model_config[key]
         return None
 
     def __quota_check(self,peek:bool = False) -> int:
@@ -73,7 +73,7 @@ class ERNIEAdapter(BLMAdapter):
         ]
 
         disable_high_cost = self.get_config("disable_high_cost")
-        if disable_high_cost == False:
+        if disable_high_cost != True:
             model_list_response.append({"model_name":"ERNIE-Bot 4.0","type":"hight-cost", "max-token":4000,"supported_feature":["completion_flow","chat_flow"]})
         return model_list_response
 
