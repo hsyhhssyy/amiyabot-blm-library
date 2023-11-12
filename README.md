@@ -98,8 +98,11 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 | functions | Optional[list[BLMFunctionCall]] | FunctionCall功能，需要模型支持才能生效 | None |
 
 > model可以是字符串，也可以是model_list或get_model返回的dict。在dict的情况下，会访问dict的“model_name”属性来获取模型名称。
+
 > 如果model不存在，会直接返回None。如果传入的model为空，会访问配置项中的‘默认模型’并选择那个模型。
+
 > 关于channel_id，其实本插件并不需要一个channel id，该参数的唯一目的是为了保存token调用量。我建议插件调用时，能传递channel_id的场景尽量传递，无法获取ChannelId的时候也最好传递自己插件的名字等，用于在计费的时候区分。
+
 > functions函数是用于FunctionCall功能，需要模型支持。在model_list中，supported_feature带有"function_call"的模型支持这个功能。目前仅ChatGPT支持该功能，具体的功能说明请看[这个文档](https://platform.openai.com/docs/guides/function-calling)。（下个版本会尝试在文心一言中模拟该功能。）
 
 #### model_list
@@ -129,7 +132,7 @@ Chat工作流，以一问一答的形式，与AI进行交互。
 |---------|-----|------|
 | model_name | int | 模型名 | 
 
-*请不要在代码中hardcode模型的名称，在当前版本中，系统会返回诸如ernie-4这样的模型名，但是在未来版本，本插件会支持用户配置两个ChatGPT，三个文心一言这样的设置。届时在返回模型时，就会出现“ERNIE-4(UserDefinedName)”这样的结果。你的HardCode就会失效。*
+**请不要在代码中hardcode模型的名称，在当前版本中，系统会返回诸如ernie-4这样的模型名，但是在未来版本，本插件会支持用户配置两个ChatGPT，三个文心一言这样的设置。届时在返回模型时，就会出现“ERNIE-4(UserDefinedName)”这样的结果。你的HardCode就会失效。**
 
 #### get_model
 
@@ -195,9 +198,9 @@ SELECT
 
 ## 备注
 
-[项目地址:Github](https://github.com/hsyhhssyy/amiyabot-arknights-hsyhhssyy-player-rating/)
+[项目地址:Github](https://github.com/hsyhhssyy/amiyabot-blm-libraryg/)
 
-[遇到问题可以在这里反馈(Github)](https://github.com/hsyhhssyy/amiyabot-arknights-hsyhhssyy-player-rating/issues/new/)
+[遇到问题可以在这里反馈(Github)](https://github.com/hsyhhssyy/amiyabot-blm-library/issues/new/)
 
 ## 版本信息
 
