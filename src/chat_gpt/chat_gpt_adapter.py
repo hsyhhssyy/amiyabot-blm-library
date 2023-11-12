@@ -71,8 +71,9 @@ class ChatGPTAdapter(BLMAdapter):
             {"model_name": "gpt-3.5-turbo", "type": "low-cost", "max-token":2000, "supported_feature": [
                 "completion_flow", "chat_flow", "assistant_flow", "function_call"]},
         ]
-        disable_gpt_4 = self.get_config("disable_high_cost")
-        if disable_gpt_4 == False:
+        disable_high_cost = self.get_config("disable_high_cost")
+        self.debug_log(f"disable_high_cost: {disable_high_cost}")
+        if disable_high_cost != True:
             model_list_response.append({"model_name": "gpt-4", "type": "high-cost", "max-token":4000, "supported_feature": [
                 "completion_flow", "chat_flow", "assistant_flow", "function_call"]})
         return model_list_response
@@ -80,7 +81,7 @@ class ChatGPTAdapter(BLMAdapter):
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+         model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  

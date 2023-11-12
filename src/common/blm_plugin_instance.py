@@ -78,7 +78,7 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
     async def completion_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> Optional[str]:  
@@ -96,7 +96,7 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
@@ -134,7 +134,7 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
         self,  
         name: str,  
         instructions: str,  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]]= None,
         functions: Optional[List[BLMFunctionCall]] = None,  
         code_interpreter: bool = False,  
         retrieval: Optional[List[str]] = None,  
@@ -187,5 +187,10 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
                 json_objects.append(json_object)
             except json.JSONDecodeError as e:
                 pass
+
+        # 如果是一个数组的数组,就拆出来
+        if len(json_objects) == 1:
+            if isinstance(json_objects[0],list):
+                return json_objects[0]
 
         return json_objects

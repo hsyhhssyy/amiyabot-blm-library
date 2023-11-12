@@ -20,7 +20,7 @@ class BLMAdapter:
     async def completion_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> Optional[str]:  
@@ -29,7 +29,7 @@ class BLMAdapter:
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
@@ -49,7 +49,7 @@ class BLMAdapter:
         self,  
         name: str,  
         instructions: str,  
-        model: Optional[Union[str, dict]],
+        model: Optional[Union[str, dict]] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
         code_interpreter: bool = False,  
         retrieval: Optional[List[str]] = None,  

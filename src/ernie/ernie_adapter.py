@@ -28,8 +28,8 @@ class ERNIEAdapter(BLMAdapter):
         if show_log == True:
             logger.info(f'{msg}')
 
-    def get_config(self, key, channel_id):
-        chatgpt_config = self.plugin.get_config("ERNIE", channel_id)
+    def get_config(self, key):
+        chatgpt_config = self.plugin.get_config("ERNIE")
         if chatgpt_config and chatgpt_config["enable"] and key in chatgpt_config:
             return chatgpt_config[key]
         return None
@@ -78,7 +78,7 @@ class ERNIEAdapter(BLMAdapter):
         return model_list_response
 
     async def __get_access_token(self, channel_id):
-        appid = self.get_config("app_id", channel_id)
+        appid = self.get_config("app_id")
 
         access_token_key = "ernie_access_token_"+appid
 
@@ -102,8 +102,8 @@ class ERNIEAdapter(BLMAdapter):
         
         self.debug_log(f"get new access token")
 
-        api_key = self.get_config("api_key", channel_id)
-        secret_key = self.get_config("secret_key", channel_id)
+        api_key = self.get_config("api_key")
+        secret_key = self.get_config("secret_key")
 
         url = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}"
 
@@ -146,7 +146,7 @@ class ERNIEAdapter(BLMAdapter):
     async def chat_flow(  
         self,  
         prompt: Union[str, List[str]],  
-        model: str,
+        model: Optional[Union[str, dict]] = None,
         context_id: Optional[str] = None,  
         channel_id: Optional[str] = None,
         functions: Optional[List[BLMFunctionCall]] = None,  
