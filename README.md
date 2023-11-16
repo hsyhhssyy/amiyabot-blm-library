@@ -14,8 +14,24 @@
 
 > 我是ChatGPT用户
 
+如果你是ChatGPT用户，那你首先需要科学上网，然后你还需要通过代码部署兔兔，并安装openai库，要求版本>=1.0.0
+
+```
+pip install openai>=1.0.0
+```
+
+此外，OpenAI会时不时更新他们的API策略，所以如果发现插件不能工作，可以先考虑升级OpenAI运行库，方式如下：
+
+```
+pip install --upgrade openai
+```
+
+然后，您需要使用境外手机号注册 [OpenAI](https://beta.openai.com/) 账户以获取ApiKey。
+
+接下来前往插件配置页面填写插件配置：
+
 * `api_key` :由OpenAI提供给您，必须要给出API_KEY才能使用该插件。
-* `url` :如果你使用反向代理，那么这里可以通过给出base_url来指定openai调用时的基础Url，该url应该以http开头，结尾不包含斜杠，使用时将会拼接为{base_url}/completion等形式，该参数默认值为https://api.openai.com/v1。
+* `url` :如果你使用反向代理，那么这里可以通过给出base_url来指定openai调用时的基础Url，该url应该以http开头，结尾不包含斜杠，例如（https://api.openai.com/v1），该参数默认值为空。
 * `proxy` :如果你没有全局代理，那么你可以指定proxy参数来给他配置一个http或https代理，socks代理不支持。
 * `禁用GPT-4` 开启该开关后，不再向其他插件提供ERNIE-4模型，如果其他插件尝试调用该模型，则会报错。
 * `GPT-4限额` 使用GPT-4模型时的平均每小时调用次数，设为0表示不限。

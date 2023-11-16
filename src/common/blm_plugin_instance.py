@@ -10,6 +10,8 @@ from ..chat_gpt.chat_gpt_adapter import ChatGPTAdapter
 from ..ernie.ernie_adapter import ERNIEAdapter 
 from ..common.database import AmiyaBotBLMLibraryTokenConsumeModel,AmiyaBotBLMLibraryMetaStorageModel
 
+from .extract_json import extract_json
+
 class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
     def __init__(self, name: str, 
                  version: str, 
@@ -151,46 +153,6 @@ class BLMLibraryPluginInstance(AmiyaBotPluginInstance,BLMAdapter):
         return await adapter.assistant_create(name, instructions, model, functions, code_interpreter, retrieval)
     
     def extract_json(self, string: str) -> List[Union[Dict[str, Any], List[Any]]]:
-        json_strings = []
-        json_objects = []
-        
-        # We need additional variables to handle arrays
-        open_curly_brackets = 0
-        open_square_brackets = 0
-        start_index = None
-
-        for index, char in enumerate(string):
-            if char == '{':
-                open_curly_brackets += 1
-            elif char == '}':
-                open_curly_brackets -= 1
-            elif char == '[':
-                open_square_brackets += 1
-            elif char == ']':
-                open_square_brackets -= 1
-            else:
-                continue
-
-            # Check when to start capturing the string
-            if (open_curly_brackets == 1 and open_square_brackets == 0 and start_index is None) or \
-            (open_square_brackets == 1 and open_curly_brackets == 0 and start_index is None):
-                start_index = index
-
-            # Check when to stop capturing the string
-            if (open_curly_brackets == 0 and open_square_brackets == 0 and start_index is not None):
-                json_strings.append(string[start_index : index + 1])
-                start_index = None
-
-        for json_str in json_strings:
-            try:
-                json_object = json.loads(json_str)
-                json_objects.append(json_object)
-            except json.JSONDecodeError as e:
-                pass
-                
-        # 如果是一个数组的数组,就拆出来
-        if len(json_objects) == 1:
-            if isinstance(json_objects[0],list):
-                return json_objects[0]
-
-        return json_objects
+        return extract_json(string)
+    
+# 测试用main

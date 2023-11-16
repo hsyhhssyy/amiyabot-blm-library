@@ -1,7 +1,8 @@
 
 import time
-import openai
+import httpx
 
+from openai import AsyncOpenAI,BadRequestError,RateLimitError
 from datetime import datetime
 
 from typing import List, Optional, Union
@@ -109,23 +110,32 @@ class ChatGPTAdapter(BLMAdapter):
                 self.debug_log(f"quota check failed, fallback to gpt-3.5-turbo {quota}")
                 model_info = self.get_model("gpt-3.5-turbo")
 
-
-        openai.api_key = self.get_config('api_key')
-
         proxy = self.get_config('proxy')
-        if proxy:
-            self.debug_log(f"proxy set: {proxy}")
-            openai.proxy = proxy
+        async_httpx_client = None
+        if proxy is not None and proxy != "":
+            if proxy.startswith("https://"):
+                proxies = {
+                    "http://": proxy,
+                    "https://": proxy
+                }
+                async_httpx_client=httpx.AsyncClient(proxies=proxies)
+            elif proxy.startswith("http://"):
+                proxies = {
+                    "http://": proxy
+                }
+                async_httpx_client=httpx.AsyncClient(proxies=proxies)
+            else:
+                raise ValueError("无效的代理URL")
 
         base_url = self.get_config('url')
-        if base_url:
-            openai.api_base = base_url
-
-        response = None
+        client = AsyncOpenAI(
+            api_key=self.get_config('api_key'),
+            base_url=base_url,
+            http_client = async_httpx_client
+        )
 
         self.debug_log(f"url: {base_url} proxy: {proxy} model: {model_info}")
         
-
         if isinstance(prompt, str):
             prompt = [prompt]
         
@@ -139,17 +149,14 @@ class ChatGPTAdapter(BLMAdapter):
         combined_message = ''.join(obj['content'] for obj in prompt)
 
         try:
-            response = await run_in_thread_pool(
-                openai.ChatCompletion.create,
-                **{'model': model_info["model_name"], 'messages': prompt}
-            )
-            
-        except openai.error.RateLimitError as e:
+            completions = await client.chat.completions.create(model=model_info["model_name"],messages=prompt)
+                        
+        except RateLimitError as e:
             self.debug_log(f"RateLimitError: {e}")
             self.debug_log(f'Chatgpt Raw: \n{combined_message}')
             return None
-        except openai.error.InvalidRequestError as e:
-            self.debug_log(f"InvalidRequestError: {e}")
+        except BadRequestError as e:
+            self.debug_log(f"BadRequestError: {e}")
             self.debug_log(f'Chatgpt Raw: \n{combined_message}')
             return None
         except Exception as e:
@@ -157,8 +164,8 @@ class ChatGPTAdapter(BLMAdapter):
             self.debug_log(f'Chatgpt Raw: \n{combined_message}')
             return None
 
-        text: str = response['choices'][0]['message']['content']
-        # role: str = response['choices'][0]['message']['role']
+        text: str = completions.choices[0].message.content
+        # role: str = completions.choices[0].message.role
         
         self.debug_log(f'{model_info["model_name"]} Raw: \n{combined_message}\n------------------------\n{text}')
 
@@ -179,17 +186,17 @@ class ChatGPTAdapter(BLMAdapter):
             file.write(f'{text}')
             file.write('\n')
 
-        id = response['id']
-        usage = response['usage']
+        id = completions.id
+        usage = completions.usage
 
         if channel_id is None:
             channel_id = "-"
 
         AmiyaBotBLMLibraryTokenConsumeModel.create(
             channel_id=channel_id, model_name=model_info["model_name"], exec_id=id,
-            prompt_tokens=int(usage['prompt_tokens']),
-            completion_tokens=int(usage['completion_tokens']),
-            total_tokens=int(usage['total_tokens']), exec_time=datetime.now())
+            prompt_tokens=int(usage.prompt_tokens),
+            completion_tokens=int(usage.completion_tokens),
+            total_tokens=int(usage.total_tokens), exec_time=datetime.now())
 
         if context_id is not None:
             prompt.append({"role": "assistant", "content": text})
