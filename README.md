@@ -38,9 +38,16 @@ pip install --upgrade openai
 
 > 我是文心一言用户
 
-* `app_id` `api_key` `secret_key` :由百度智能云提供给您，必须要给才能使用该插件。
+请前往 [百度智能云千帆大模型平台](https://console.bce.baidu.com/qianfan/overview) 注册并为 `ERNIE-Bot 4.0`
+等模型 [开通按量付费](https://console.bce.baidu.com/qianfan/ais/console/onlineService)，需在平台充值以保证使用。
+
+在 [应用接入](https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application) 界面创建应用并在插件配置内填写
+app_id，API Key 和 Secret Key。
+
+* `app_id` `api_key` `secret_key` :由百度智能云提供给您，必须要填写才能使用该插件。
 * `禁用ERNIE-4` 开启该开关后，不再向其他插件提供ERNIE-4模型，如果其他插件尝试调用该模型，则会报错。
 * `ERNIE-4限额` 使用ERNIE-4模型时的平均每小时调用次数，设为0表示不限。
+* `ERNIE-4视为经济性` 将ERNIE-4输出为经济型模型，方便钱包比较充裕的用户万事万物都用文心一言4
 
 ## 我是兔兔开发者
 

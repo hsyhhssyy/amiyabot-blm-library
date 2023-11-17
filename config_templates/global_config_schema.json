@@ -82,6 +82,11 @@
           "description": "设置后，将不会在列表中给其他插件返回ERNIE-4模型。",
           "type": "boolean"
         },
+        "use_4_as_low_cost": {
+          "title": "ERNIE-4视为经济型模型",
+          "description": "设置后，将会把ERNIE-4视为low-cost模型。",
+          "type": "boolean"
+        },
         "high_cost_quota": {
           "title": "ERNIE-4限额",
           "description": "使用ERNIE-4模型时的平均每小时调用次数，设为0表示不限。",

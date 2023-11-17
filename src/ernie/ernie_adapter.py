@@ -77,8 +77,12 @@ class ERNIEAdapter(BLMAdapter):
         ]
 
         disable_high_cost = self.get_config("disable_high_cost")
+        use_4_as_low_cost = self.get_config("use_4_as_low_cost")
+        ernie_4_cost= "high-cost"
+        if use_4_as_low_cost == True:
+            ernie_4_cost = "low-cost"
         if disable_high_cost != True:
-            model_list_response.append({"model_name":"ERNIE-Bot 4.0","type":"hight-cost", "max-token":4000,"supported_feature":["completion_flow","chat_flow"]})
+            model_list_response.append({"model_name":"ERNIE-Bot 4.0","type":ernie_4_cost, "max-token":4000,"supported_feature":["completion_flow","chat_flow"]})
         return model_list_response
 
     async def __get_access_token(self, channel_id):
