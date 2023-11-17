@@ -12,7 +12,7 @@
 
 * `默认模型` : 有时候，其他插件没有提供模型的选项，此时调用本插件时，默认为其提供的模型。如果你配置了文心一言或者ChatGPT等配置后发现这里没有选项，请保存配置然后刷新Console再试。
 
-> 我是ChatGPT用户
+### 我是ChatGPT用户
 
 如果你是ChatGPT用户，那你首先需要科学上网，然后你还需要通过代码部署兔兔，并安装openai库，要求版本>=1.0.0
 
@@ -36,7 +36,7 @@ pip install --upgrade openai
 * `禁用GPT-4` 开启该开关后，不再向其他插件提供ERNIE-4模型，如果其他插件尝试调用该模型，则会报错。
 * `GPT-4限额` 使用GPT-4模型时的平均每小时调用次数，设为0表示不限。
 
-> 我是文心一言用户
+### 我是文心一言用户
 
 请前往 [百度智能云千帆大模型平台](https://console.bce.baidu.com/qianfan/overview) 注册并为 `ERNIE-Bot 4.0`
 等模型 [开通按量付费](https://console.bce.baidu.com/qianfan/ais/console/onlineService)，需在平台充值以保证使用。
